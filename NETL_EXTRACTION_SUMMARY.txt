@@ -1,0 +1,223 @@
+================================================================================
+NETL INDUSTRIAL SOURCES CO2 CAPTURE COST STUDY - DATA EXTRACTION SUMMARY
+Report: Cost of Capturing CO2 from Industrial Sources (March 31, 2023)
+Reference: DOE/NETL-2023/3907
+================================================================================
+
+GLOBAL FINANCIAL ASSUMPTIONS (ALL SOURCES)
+================================================================================
+
+Cost Year: December 2018 USD, CEPCI = 603.1
+Fuel Cost: $4.42/MMBtu
+Power Cost: $60/MWh
+Capacity Factor: 85% (assumed for all cases)
+Project Life: 30 years (all sources)
+Interest on Debt: 5.15% (all sources)
+Admin/Overhead Rate: 25% of burdened O&M labor
+Owners Cost Components:
+  - Production (Start-up): 2% of TPC + 6 months labor + 1 month materials/consumables/waste
+  - Inventory Capital: 0.5% TPC (spare parts) + 60-day fuel supply (high purity only)
+  - Non-fuel consumables: 60-day supply
+  - Land: $3,000/acre × 10 acres = $30,000
+  - Financing Costs: 2.7% of TPC
+  - Other Owner's Costs: 15% of TPC
+
+HIGH PURITY SOURCES - FINANCIAL FACTORS (Exhibit 3-3)
+================================================================================
+
+                    Ammonia    EO         Ethanol    NGP        CTL/GTL
+Fixed Charge Rate    5.33%      4.63%      6.64%      5.82%      7.32%
+TASC/TOC Ratio       1.035      1.025      1.047      1.039      1.054
+Capital Charge Factor 5.51%     4.74%      6.96%      6.05%      7.71%
+Debt/Equity Ratio    54/46      48/52      36/64      43/57      32/68
+Leveraged ROE        1.50%      0.04%      4.51%      2.96%      5.54%
+Capex Period         1 year     1 year     1 year     1 year     1 year
+Capex Distribution   100% Yr1   100% Yr1   100% Yr1   100% Yr1   100% Yr1
+
+LOW PURITY SOURCES - FINANCIAL FACTORS (Exhibit 3-4)
+================================================================================
+
+                        Refinery H2    Cement/Pulp/Paper    Iron/Steel
+Fixed Charge Rate        4.39%          5.08%                6.90%
+TASC/TOC Ratio          1.036          1.054                1.091
+Capital Charge Factor    4.55%          5.35%                7.53%
+Debt/Equity Ratio       33/67          42/58                39/61
+Leveraged ROE           0.41%          1.42%                5.02%
+Capex Period            3 years        3 years              3 years
+Capex Distribution      10%/60%/30%    10%/60%/30%          10%/60%/30%
+
+KEY METHODOLOGICAL NOTES
+================================================================================
+
+COC Calculation (Equation 1-1):
+  COC ($/tonne CO2) = [TOC × CCF + FOM + VOM + PF + PP] / Annual CO2 Captured
+
+Where:
+  TOC = Total overnight costs (BEC + EPCC + contingencies + owner's costs)
+  CCF = Capital charge factor (annuity factor for 30-year life with WACC)
+  FOM = Annual fixed O&M costs
+  VOM = Annual variable O&M costs
+  PF = Purchased fuel (NG for low purity cases only)
+  PP = Purchased power
+
+Capital Cost Hierarchy:
+  BEC (Bare Erected Cost): Equipment + facilities + direct/indirect labor
+  EPCC (Engineering, Procurement & Construction): BEC + EPC services
+  TPC (Total Plant Cost): EPCC + project/process contingencies (20%)
+  TOC (Total Overnight Cost): TPC + owner's costs
+  TASC (Total As-Spent Cost): TOC + escalation + interest during construction
+
+Retrofit Factors:
+  High Purity Cases: RDF = 1.01 (blanket retrofit increase on TPC)
+  Low Purity Cases: RDF = 1.05 (on TPC)
+  NOTE: These are generic factors; actual retrofit costs are site/technology specific
+
+Operating Labor:
+  High Purity: 1 additional operator
+  Low Purity: 2.3 additional operators (includes AGR unit & boiler operation)
+  Base Rate: $38.50/hour + 30% burden
+
+Maintenance: Scaled from initial capital cost (weighted analysis per component)
+
+Consumables & Waste: Calculated at 100% capacity, then adjusted for 85% capacity factor
+
+COMPRESSION EQUIPMENT SPECIFICATIONS
+================================================================================
+
+Reciprocating Compressors (High Purity Cases):
+  - Ammonia:    5 stages, inlet 122,946 lb/hr, suction 23.5 psia, discharge 2,214.7 psia
+  - EO:         4 stages, inlet 30,578 lb/hr, suction 43.5 psia, discharge 2,214.7 psia
+  - Ethanol:    5 stages, inlet 36,000 lb/hr, suction 16.4 psia, discharge 2,214.7 psia
+
+Centrifugal Compressors (Mostly Low Purity):
+  - NGP:        8 stages, inlet 164,059 lb/hr, suction 23.5 psia, discharge 2,214.7 psia
+  - Cement:     8 stages, inlet 275,388 lb/hr, suction 28.9 psia, discharge 2,214.7 psia
+  - Steel/Iron: 8 stages, inlet 424,424-469,304 lb/hr, suction 28.9 psia, discharge 2,214.7 psia
+  - Refinery H2: 7 stages, inlet 93,136-104,553 lb/hr, suction 28.3/90.8 psia, discharge 2,214.7 psia
+  - CTL:        8 stages, inlet 2,200,423 lb/hr, suction 160/265/300 psia, discharge 2,214.7 psia
+  - GTL:        8 stages, inlet 467,794 lb/hr, suction 265 psia, discharge 2,214.7 psia
+
+Final Discharge Pressure: 2,200 psig (pipeline specification per QGESS)
+
+CO2 REMOVAL SYSTEMS (Low Purity Cases)
+================================================================================
+
+Iron/Steel & Cement: Shell CANSOLV post-combustion capture
+  - Amine-based solvent
+  - Absorber removes 90-99% of CO2 from flue gas
+  - Amine regeneration with steam from NG-fired boiler
+  - Selective catalytic reduction (SCR) and FGD removal of NOx/SOx
+  - Water wash section removes entrained amine
+
+Refinery Hydrogen: Shell ADIP-Ultra pre-combustion capture
+  - Proprietary amine-based solvent
+  - Absorber removes 90-99% of CO2 from high-pressure feed gas
+  - Flash vessel removes mid-pressure CO2
+  - Low-pressure steam regeneration
+  - Designed for high-pressure application (Quest facility in Alberta)
+
+INDUSTRIAL BOILER (Low Purity Cases)
+================================================================================
+
+Vendor: CleaverBrooks (2021 quote)
+Output: Superheated steam at 100 psig
+Fuel: Natural gas (consumption calculated by Aspen simulation)
+Auxiliary Power: For circulation pumps and compressors (scaled from quotes)
+Feedwater: Makeup calculated by mass balance methods (consistent with BBR4 cases)
+Capacity: Scaled per QGESS guidance from Derate Study case B11A-BR
+
+COOLING WATER SYSTEM
+================================================================================
+
+Design: Study cooling water unit (not assuming existing plant capacity)
+Components: Circulating water pumps, cooling tower fans
+Power Calculation: Methodology from BBR4 cases
+Cost Scaling: From NETL Derate Study case B11A-BR (representative for case size ranges)
+
+HEAT EXCHANGERS
+================================================================================
+
+CO2 Inlet Cooling:
+  - Required for all cases to meet 86°F pipeline specification
+  - Reciprocating compressor cases: Cooler included in compressor quote
+  - Centrifugal compressor cases: Separate aftercooler (scaled from BBR4 B12B)
+
+Ethanol Special Case: Pre-cooler required (fermentation produces 320°F stream)
+  - Floating head shell-and-tube design
+  - HX coefficient = 6.2 Btu/(hour-square foot-°F)
+
+ANCILLARY EQUIPMENT
+================================================================================
+
+Electrical Plant: Accessory power (MCC, switchgear, wiring)
+I&C Equipment: Instrumentation and control systems
+Site Improvements: Ground preparation, drainage, facilities
+Buildings & Structures: Minimal for capture systems
+Scaling: Per QGESS guidance from Derate Study case B11A-BR
+
+RETROFIT FACTORS
+================================================================================
+
+Purpose: Adjust greenfield costs for existing plant retrofits
+Application: Only for RF (retrofit) capture rate scenarios
+
+High Purity Retrofit Factor: 1.01
+  - Applied as blanket multiplier on TPC
+  - Minimal retrofit complexity (just compression)
+
+Low Purity Retrofit Factor: 1.05
+  - Applied to TPC
+  - More complex (AGR integration, boiler addition, tie-ins)
+  - Note: Retrofit Study factors were 1.2-1.6 for power plants, but
+    industrial sources are substantially smaller utility-scale designs
+
+REFERENCE PLANT SCALES (HIGH PURITY)
+================================================================================
+
+Ammonia:           394,000 tonnes NH3/yr, 486,227 tonnes CO2/yr (99% purity stripper vent)
+Ethylene Oxide:    Represents typical U.S. EO plant (~350-400 klbs/hr production)
+Ethanol:           Large-scale fermentation facility (multi-hundred-thousand gallons/yr)
+NGP:               ~164,000 lb/hr CO2 feed to compression (typical large NGP facility)
+CTL/GTL:           N/A - no existing U.S. plants (scaling from literature/NETL studies)
+
+VALIDATION TARGETS (±5% on total LCOC)
+================================================================================
+
+Ammonia GF:              ~$19.0/tonne CO2
+EO GF:                   ~$26.0/tonne CO2
+NGCC F-frame RF:         ~$61.8/tonne CO2 (power plant baseline, not industrial)
+NGCC H-frame RF 95%:     ~$55.9/tonne CO2 (power plant baseline, not industrial)
+
+Note: These are benchmarks from previous NETL studies for validation purposes.
+Industrial sources have different cost drivers and should be validated separately.
+
+DATA SOURCES & NOTES
+================================================================================
+
+- Financial factors: NETL Energy Markets Analysis Team (October 2021)
+- Compressor quotes: Equipment vendors (2020-2021)
+- Boiler quote: CleaverBrooks (March 2021)
+- AGR system data: Shell CANSOLV/ADIP-Ultra (2021)
+- Cooling water & heat exchanger: NETL Derate Study case B11A-BR scaling
+- Cost escalation: Chemical Engineering Plant Cost Index to Dec 2018
+- Labor rates: $38.50/hour (2018)
+- Maintenance: Percentage of capital cost (industry-standard relationships)
+- Process models: Aspen Plus (steady-state mass & energy balance)
+- All costs in December 2018 USD
+
+IMPORTANT METHODOLOGY CAVEATS
+================================================================================
+
+1. Class 4 Estimates (AACE 16R-90): ±30% accuracy range
+2. Generic site assumption (Midwestern U.S.): Actual costs vary by location
+3. 85% capacity factor assumed: Real plants may operate differently
+4. Continuous equipment scaling: Discrete sizes may cost differently
+5. NG boiler for AGR only (low purity): If CO2 from NG boiler captured,
+   would significantly increase available CO2 due to lower concentration
+6. No capture of CO2 from NG boiler combustion (low purity cases)
+7. Owner's costs include pre-production & startup (6 months)
+8. All cases assume EOR pipeline specifications (2,200 psig)
+
+================================================================================
+END OF EXTRACTION SUMMARY
+================================================================================
