@@ -3,5 +3,5 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/ccus-tea/',
+  base: '/CCUS-COST-MODEL---GB/',
 })
