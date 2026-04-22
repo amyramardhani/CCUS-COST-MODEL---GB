@@ -669,8 +669,7 @@ function calcLCOC(inputs, scenario = { overrides: {} }) {
   const cost_of_equity = scenario?.overrides?.[src]?.cost_of_equity
     ?? inputs.cost_of_equity
     ?? getParam(src, "cost_of_equity", scenario);
-  const state_code = inputs.state ?? "IL";
-  const tax_rate = inputs.tax_rate ?? combinedTaxRate(state_code);
+  const tax_rate = inputs.tax_rate ?? 0.21;
   const wacc = inputs.use_fixed_hurdle_rate
     ? inputs.fixed_hurdle_rate
     : calcWACC(debt_pct, cost_of_debt, cost_of_equity, tax_rate);
@@ -806,7 +805,6 @@ function calcLCOC(inputs, scenario = { overrides: {} }) {
 }
 
 function calc45Q(operatingYear, co2PerYear, inputs, scenario) {
-  if (inputs.use_45q === false) return 0;
   if (operatingYear >= CREDIT_45Q.credit_period_years) return 0;
   const isDac = inputs.use_dac_obbba_rate ?? false;
   const baseRate = isDac ? CREDIT_45Q.dac : CREDIT_45Q.standard;
@@ -919,9 +917,6 @@ function calcCashFlow(inputs, scenario = { overrides: {} }) {
     });
   }
 
-  // Revenue = LCOC × CO2 captured — emitter pays breakeven cost to capture operator
-  const annualRevenue = lcoc.lcoc * co2_tpy;
-
   // Operating phase
   const operatingCFs = [];
   for (let yr = 0; yr < projectLife; yr++) {
@@ -931,19 +926,16 @@ function calcCashFlow(inputs, scenario = { overrides: {} }) {
     const other_credits = calcOtherCredits(yr, co2_tpy, inputs);
     const total_credits = credit_45q + other_credits;
 
-    // Revenue = LCOC offtake + tax credits
-    const gross_revenue = annualRevenue + total_credits;
-
-    // Pre-tax operating income
-    const ebitda = gross_revenue - annualOpex;
+    // Pre-tax operating income = Credits - OpEx
+    const ebitda = total_credits - annualOpex;
 
     // Depreciation is non-cash — used for tax calculation only
     const depreciation = yr < depSchedule.length ? capex * depSchedule[yr] : 0;
     const taxable_income = ebitda - depreciation;
     const tax = Math.max(0, taxable_income * taxRate); // no negative tax for now
 
-    // Net CF = revenue + credits - opex - taxes
-    const net_cf = gross_revenue - annualOpex - tax;
+    // Net CF = total_credits - annual_opex - taxes
+    const net_cf = total_credits - annualOpex - tax;
 
     cumulativeCF += net_cf;
     if (paybackYear === null && cumulativeCF >= 0) {
@@ -956,11 +948,9 @@ function calcCashFlow(inputs, scenario = { overrides: {} }) {
       operating_year: yr + 1,
       phase: "operating",
       annual_opex: annualOpex,
-      annual_revenue: annualRevenue,
       credit_45q,
       other_credits,
       total_credits,
-      gross_revenue,
       ebitda,
       depreciation,
       taxable_income,
@@ -975,8 +965,7 @@ function calcCashFlow(inputs, scenario = { overrides: {} }) {
       phase: "operating",
       op_year: yr + 1,
       capex: 0,
-      revenue: gross_revenue,
-      lcoc_revenue: annualRevenue,
+      revenue: total_credits,
       opex: -annualOpex,
       depreciation,
       dep_shield: depShield,
@@ -1023,20 +1012,10 @@ function calcNPV(cfs, wacc) {
   return cfs.reduce((npv, cf, t) => npv + cf / Math.pow(1 + wacc, t), 0);
 }
 
-// IRR — Newton-Raphson with sign-change guard
+// IRR — Newton-Raphson
 function calcIRR(cfs, guess = 0.1) {
-  // IRR only exists if cash flows change sign at least once
-  let hasPos = false, hasNeg = false;
-  for (const cf of cfs) {
-    if (cf > 0) hasPos = true;
-    if (cf < 0) hasNeg = true;
-    if (hasPos && hasNeg) break;
-  }
-  if (!hasPos || !hasNeg) return null;
-
   let rate = guess;
   for (let i = 0; i < 1000; i++) {
-    if (rate <= -1) rate = -0.99; // prevent division by zero in discounting
     const npv = calcNPV(cfs, rate);
     const dnpv = cfs.reduce((d, cf, t) => d - t * cf / Math.pow(1 + rate, t + 1), 0);
     if (Math.abs(dnpv) < 1e-12) return rate;
@@ -1044,7 +1023,7 @@ function calcIRR(cfs, guess = 0.1) {
     if (Math.abs(newRate - rate) < 1e-7) return newRate;
     rate = newRate;
   }
-  return null; // failed to converge
+  return rate;
 }
 
 // Payback period
@@ -1241,14 +1220,20 @@ const BATCH_FACILITY_SCHEMA = {
   dep_method:       { label: "Dep. Method",         type: "select",  required: false, options: ["", "macrs_5", "macrs_15", "sl_10", "sl_20", "sl_30"] },
 };
 
+function csvEscape(v) {
+  const s = v == null ? "" : String(v);
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
 function generateBatchTemplate() {
   const headers = Object.keys(BATCH_FACILITY_SCHEMA);
   const exampleRow = [
     "Example Plant 1", "ammonia", "388400", "RF",
     "IL", "85", "90", "12", "54", "5.15", "30", "2026", "88", "3.13", ""
   ];
-  const csvContent = [headers.join(","), exampleRow.join(",")].join("\n");
-  const blob = new Blob([csvContent], { type: "text/csv" });
+  const csvContent = [headers.map(csvEscape).join(","), exampleRow.map(csvEscape).join(",")].join("\r\n");
+  // UTF-8 BOM so Excel opens it with the correct encoding
+  const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url; a.download = "ccus_batch_template.csv"; a.click();
@@ -1785,7 +1770,7 @@ export default function App() {
       cost_of_debt: costOfDebt / 100,
       cost_of_equity: costOfEquity / 100,
       project_life: projectLife,
-      state: projectState,
+      tax_rate: 0.21,
       use_fixed_hurdle_rate: useFixedHurdle,
       fixed_hurdle_rate: fixedHurdleRate / 100,
     };
@@ -1812,13 +1797,13 @@ export default function App() {
       cost_of_debt: costOfDebt / 100,
       cost_of_equity: costOfEquity / 100,
       project_life: projectLife,
+      tax_rate: 0.21,
       use_fixed_hurdle_rate: useFixedHurdle,
       fixed_hurdle_rate: fixedHurdleRate / 100,
       cod_year: codYear,
       state: projectState,
       depreciation_method: depMethod,
       storage_type: storageType,
-      use_45q: use45q,
       use_45q_escalation: use45q && use45qEscalation,
       use_dac_obbba_rate: use45q && useDacRate,
       inflation_rate: cpiRate / 100,
@@ -1834,7 +1819,16 @@ export default function App() {
       use_lcfs: useLcfs,
       lcfs_price: lcfsPrice,
     };
+    // If 45Q is toggled off, zero out the credit by overriding storage type to none
+    if (!use45q) {
+      cfInputs.use_dac_obbba_rate = false;
+      cfInputs.use_45q_escalation = false;
+    }
     const cf = calcCashFlow(cfInputs, activeScenario);
+    // Zero out 45Q in results if toggled off
+    if (!use45q && cf.years) {
+      cf.years.forEach(y => { if (y.phase === "operating") { y.credit_45q = 0; y.total_credits = y.other_credits ?? 0; } });
+    }
     return cf;
   }, [activeSource, co2_captured, capacityFactor, buildType, elecPrice, gasPrice, techKey, dacTechType, costYear,
       effectiveDebtPct, costOfDebt, costOfEquity, projectLife, useFixedHurdle, fixedHurdleRate,
@@ -2724,6 +2718,7 @@ export default function App() {
             cost_of_debt: costOfDebt / 100,
             cost_of_equity: costOfEquity / 100,
             project_life: projectLife,
+            tax_rate: 0.21,
             use_fixed_hurdle_rate: useFixedHurdle,
             fixed_hurdle_rate: fixedHurdleRate / 100,
             cod_year: codYear,
@@ -2754,6 +2749,7 @@ export default function App() {
             cost_of_debt: costOfDebt / 100,
             cost_of_equity: costOfEquity / 100,
             project_life: projectLife,
+            tax_rate: 0.21,
             use_fixed_hurdle_rate: useFixedHurdle,
             fixed_hurdle_rate: fixedHurdleRate / 100,
             cod_year: codYear,
@@ -2901,7 +2897,7 @@ function ModelTab({ details, components, lcoc, srcDefaults, source, cf, projectS
         <MRow label="Debt %" value={f(d.debt_pct * 100, 1) + "%"} {...ov(d.debt_pct, "debt_pct", null, v => f(v * 100, 1) + "%")} />
         <MRow label="Cost of Debt" value={f(d.cost_of_debt * 100, 2) + "%"} {...ov(d.cost_of_debt, "cost_of_debt", null, v => f(v * 100, 2) + "%")} />
         <MRow label="Cost of Equity" value={f(d.cost_of_equity * 100, 2) + "%"} {...ov(d.cost_of_equity, "cost_of_equity", null, v => f(v * 100, 2) + "%")} />
-        <MRow label="Debt component" value={`${f(d.debt_pct * 100, 1)}% × ${f(d.cost_of_debt * 100, 2)}% × (1 − ${f(d.tax_rate * 100, 1)}%) = ${f(d.debt_pct * d.cost_of_debt * (1 - d.tax_rate) * 100, 3)}%`} />
+        <MRow label="Debt component" value={`${f(d.debt_pct * 100, 1)}% × ${f(d.cost_of_debt * 100, 2)}% × (1 − 21%) = ${f(d.debt_pct * d.cost_of_debt * (1 - d.tax_rate) * 100, 3)}%`} />
         <MRow label="Equity component" value={`${f((1 - d.debt_pct) * 100, 1)}% × ${f(d.cost_of_equity * 100, 2)}% = ${f((1 - d.debt_pct) * d.cost_of_equity * 100, 3)}%`} />
         <MRow label="WACC" value={f(d.wacc * 100, 3) + "%"} />
         <MRow label="Project Life" value={d.n + " yr"} {...ov(d.n, "project_life", "project_life", v => v + " yr")} />
@@ -3347,10 +3343,10 @@ function CashFlowTab({
   const netPct = Math.abs(s.net_lcoc || 0) / maxLcoc * 100;
 
   const exportCSV = () => {
-    const headers = ["Year","Phase","CapEx $","Revenue $","OpEx $","45Q Credit $","Other Credits $","Depreciation $","Tax $","Net CF $","Cumulative CF $"];
+    const headers = ["Year","Phase","CapEx $","OpEx $","45Q Credit $","Other Credits $","Depreciation $","Tax $","Net CF $","Cumulative CF $"];
     const rows = cf.years.map(y => [
-      y.year, y.phase, y.capex_spend ?? y.capex ?? 0, y.annual_revenue ?? y.lcoc_revenue ?? 0,
-      y.annual_opex ?? 0, y.credit_45q ?? 0, y.other_credits ?? 0, y.depreciation ?? 0,
+      y.year, y.phase, y.capex_spend ?? y.capex ?? 0, y.annual_opex ?? 0,
+      y.credit_45q ?? 0, y.other_credits ?? 0, y.depreciation ?? 0,
       y.tax ?? 0, y.net_cf ?? y.net_cash_flow ?? 0, y.cumulative_cf ?? 0,
     ]);
     const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
@@ -3494,7 +3490,7 @@ function CashFlowTab({
             <thead>
               <tr>
                 <th>Year</th><th>Phase</th>
-                <th className="num">CapEx $M</th><th className="num">Revenue $M</th><th className="num">OpEx $M</th>
+                <th className="num">CapEx $M</th><th className="num">OpEx $M</th>
                 <th className="num">45Q $M</th><th className="num">Other $M</th>
                 <th className="num">Dep $M</th><th className="num">Tax $M</th>
                 <th className="num">Net CF $M</th><th className="num">Cum CF $M</th>
@@ -3511,7 +3507,6 @@ function CashFlowTab({
                     <td>{y.year}</td>
                     <td>{isCon ? "Const." : "Oper."}</td>
                     <td className="num">{isCon ? f((y.capex_spend ?? y.capex ?? 0) / 1e6, 1) : "—"}</td>
-                    <td className="num">{!isCon ? f((y.annual_revenue ?? y.lcoc_revenue ?? 0) / 1e6, 1) : "—"}</td>
                     <td className="num">{!isCon ? f(-(y.annual_opex ?? Math.abs(y.opex ?? 0)) / 1e6, 1) : "—"}</td>
                     <td className="num">{!isCon && (y.credit_45q ?? 0) > 0 ? f(y.credit_45q / 1e6, 1) : "—"}</td>
                     <td className="num">{!isCon && (y.other_credits ?? 0) > 0 ? f(y.other_credits / 1e6, 1) : "—"}</td>
@@ -5057,8 +5052,10 @@ function BatchTab({ activeScenario }) {
     if (!results) return;
     const headers = ["Facility Name","Source","CO2 t/yr","Build","State","LCOC $/t","Capital","Fixed O&M","Variable O&M","Power","Status"];
     const rows = results.map(r => [r.facility_name, r.source, r.co2_capture_tpy, r.build_type, r.state ?? "", r.lcoc?.toFixed(2) ?? "ERROR", r.components?.capital?.toFixed(2) ?? "", r.components?.fixed_om?.toFixed(2) ?? "", r.components?.variable_om?.toFixed(2) ?? "", r.components?.power?.toFixed(2) ?? "", r._status]);
-    const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "ccus_batch_results.csv"; a.click(); URL.revokeObjectURL(url);
+    const csv = [headers, ...rows].map(r => r.map(csvEscape).join(",")).join("\r\n");
+    // UTF-8 BOM so Excel opens CO2 subscripts, em dashes, and other non-ASCII cleanly
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "ccus_batch_results.csv"; a.click(); URL.revokeObjectURL(url);
   };
 
   const successResults = results?.filter(r => r._status === "success") ?? [];
@@ -5085,34 +5082,53 @@ function BatchTab({ activeScenario }) {
         {facilities.length > 0 && (
           <div className="m-table-wrap">
             <table className="m-table">
-              <thead><tr><th>#</th>{reqFields.map(k => <th key={k}>{BATCH_FACILITY_SCHEMA[k]?.label ?? k}</th>)}{showMore && optFields.map(k => <th key={k}>{BATCH_FACILITY_SCHEMA[k]?.label ?? k}</th>)}<th></th></tr></thead>
+              <thead><tr><th>#</th>{reqFields.map(k => <th key={k}>{BATCH_FACILITY_SCHEMA[k]?.label ?? k}</th>)}<th></th></tr></thead>
               <tbody>
                 {facilities.map((row, idx) => (
-                  <tr key={row._id ?? idx}>
+                  <React.Fragment key={row._id ?? idx}>
+                  <tr>
                     <td>{idx + 1}</td>
                     <td><input className="i-input" value={row.facility_name} onChange={e => updateRow(idx, "facility_name", e.target.value)} style={{ width: 120, textAlign: "left" }} /></td>
                     <td><select className="i-input" value={row.source} onChange={e => updateRow(idx, "source", e.target.value)} style={{ width: 100, textAlign: "left" }}>{srcKeys.map(k => <option key={k} value={k}>{NETL_DEFAULTS[k].label}</option>)}</select></td>
                     <td><input className="i-input" type="number" value={row.co2_capture_tpy} onChange={e => updateRow(idx, "co2_capture_tpy", e.target.value)} style={{ width: 90 }} /></td>
                     <td><ToggleSwitch value={row.build_type === "RF"} onChange={(v) => updateRow(idx, "build_type", v ? "RF" : "GF")} labelOn="RF" labelOff="GF" /></td>
-                    {showMore && optFields.map(k => {
-                      const schema = BATCH_FACILITY_SCHEMA[k];
-                      if (schema.type === "select") {
-                        const options = schema.options;
-                        const labels = {
-                          "": "— default —",
-                          "macrs_5": "MACRS 5-Year",
-                          "macrs_15": "MACRS 15-Year",
-                          "sl_10": "SL 10-Year",
-                          "sl_20": "SL 20-Year",
-                          "sl_30": "SL 30-Year"
-                        };
-                        return <td key={k}><select className="i-input" value={row[k] ?? ""} onChange={e => updateRow(idx, k, e.target.value)} style={{ width: 100, textAlign: "left" }}>{options.map(o => <option key={o} value={o}>{labels[o] || o}</option>)}</select></td>;
-                      } else {
-                        return <td key={k}><input className="i-input" value={row[k] ?? ""} onChange={e => updateRow(idx, k, e.target.value)} style={{ width: 70 }} /></td>;
-                      }
-                    })}
                     <td><button className="i-reset" onClick={() => removeRow(idx)} style={{ color: "#b83a4b" }}>&times;</button></td>
                   </tr>
+                  {showMore && (
+                    <tr style={{ background: "#fffbea" }}>
+                      <td></td>
+                      <td colSpan={5} style={{ padding: "8px 4px" }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+                          {optFields.map(k => {
+                            const schema = BATCH_FACILITY_SCHEMA[k];
+                            const depLabels = {
+                              "": "-- default --",
+                              "macrs_5": "MACRS 5-Year",
+                              "macrs_15": "MACRS 15-Year",
+                              "sl_10": "SL 10-Year",
+                              "sl_20": "SL 20-Year",
+                              "sl_30": "SL 30-Year"
+                            };
+                            return (
+                              <div key={k} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                <label style={{ fontSize: 10, color: "#999999", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                                  {schema.label}
+                                </label>
+                                {schema.type === "select" ? (
+                                  <select className="i-input" value={row[k] ?? ""} onChange={e => updateRow(idx, k, e.target.value)} style={{ width: 140, textAlign: "left" }}>
+                                    {schema.options.map(o => <option key={o} value={o}>{depLabels[o] ?? o}</option>)}
+                                  </select>
+                                ) : (
+                                  <input className="i-input" value={row[k] ?? ""} onChange={e => updateRow(idx, k, e.target.value)} style={{ width: 90 }} />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>

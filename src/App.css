@@ -605,20 +605,20 @@ select.field-input option { background: var(--bg-input); color: var(--text-h); }
 }
 .tornado-baseline {
   position: absolute; top: 0; bottom: 0; width: 2px;
-  background: var(--text-h); z-index: 2;
+  background: #fdcf0c; z-index: 2;
 }
 .tornado-bar {
   position: absolute; top: 2px; bottom: 2px; z-index: 1;
   transition: width 0.3s, left 0.3s;
 }
 .tornado-bar-low { background: #58b947; opacity: 0.75; }
-.tornado-bar-high { background: #ef509a; opacity: 0.75; }
+.tornado-bar-high { background: #b83a4b; opacity: 0.75; }
 .tornado-ann {
   position: absolute; top: -14px; font-family: var(--font-mono); font-size: 10px;
   color: #555555; white-space: nowrap; pointer-events: none;
 }
-.tornado-ann-low { transform: translateX(-100%); }
-.tornado-ann-high { transform: translateX(0); }
+.tornado-ann-low { }
+.tornado-ann-high { }
 .tornado-swing {
   width: 60px; min-width: 60px; flex-shrink: 0;
   font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
@@ -679,7 +679,7 @@ select.field-input option { background: var(--bg-input); color: var(--text-h); }
 .sens-table td { font-size: 11px; }
 .sens-row-zero td { opacity: 0.35; }
 .sens-cell-green { background: rgba(88, 185, 71, 0.08); color: #58b947; }
-.sens-cell-pink { background: rgba(239, 80, 154, 0.08); color: #ef509a; }
+.sens-cell-pink { background: rgba(184, 58, 75, 0.08); color: #b83a4b; }
 
 @media (max-width: 900px) {
   .tornado-label { width: 120px; min-width: 120px; font-size: 11px; }
